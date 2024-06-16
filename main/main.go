@@ -8,6 +8,7 @@ import (
 	"time"
 	"log"
 	"net"
+    "strings"
 )
 
 const (
@@ -62,7 +63,7 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	name = name[:len(name)-1]
+	name = strings.TrimSpace(name)
 
 	if name == "" {
 		conn.Write([]byte("Name cannot be empty.\n"))
@@ -78,27 +79,34 @@ func handleConnection(conn net.Conn) {
 	sendPreviousMessages(conn)
 
 	scanner := bufio.NewScanner(conn)
-    for scanner.Scan() {
-        msg := scanner.Text()
-        if msg == "" {
-            conn.Write([]byte("Message cannot be empty.\n"))
-            continue
+    go func() {
+
+        for scanner.Scan() {
+            msg := scanner.Text()
+            if msg == "" {
+                conn.Write([]byte("Message cannot be empty.\n"))
+                continue
+            }
+            timestampedMessage := fmt.Sprintf("[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), name, msg)
+            clientsMutex.Lock()
+            messages = append(messages, timestampedMessage)
+            clientsMutex.Unlock()
+            broadcast(timestampedMessage, conn)
         }
-        timestampedMessage := fmt.Sprintf("[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), name, msg)
+
+        if err := scanner.Err(); err!= nil {
+            log.Printf("Error reading from connection: %v\n", err)
+        }
+
         clientsMutex.Lock()
-        messages = append(messages, timestampedMessage)
+        delete(clients, conn)
         clientsMutex.Unlock()
-        broadcast(timestampedMessage, conn)
+        broadcast(fmt.Sprintf("%s has left our chat...\n", name), conn)
+    } ()
+    for {
+        time.Sleep(1 *time.Second)
+        conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
     }
-
-    if err := scanner.Err(); err!= nil {
-        log.Printf("Error reading from connection: %v\n", err)
-    }
-
-    clientsMutex.Lock()
-    delete(clients, conn)
-    clientsMutex.Unlock()
-    broadcast(fmt.Sprintf("%s has left our chat...\n", name), conn)
 
 }
 
@@ -110,7 +118,7 @@ func broadcast(message string, sender net.Conn) {
     clientsMutex.Lock()
     defer clientsMutex.Unlock()
     for conn := range clients {
-        if conn != sender {
+        if conn!=sender {
             conn.Write([]byte(message + "\n"))
         }
     }
