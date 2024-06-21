@@ -54,7 +54,17 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
-	conn.Write([]byte(welcomeMessage()))
+    //we cannot direclty convert slices of bytes to array of strings
+    //loop over the array and convert each line (string) to slices of bytes
+    length := len(welcomeMessage())
+    for i := 0; i < length; i++ {
+        _, err := conn.Write([]byte(welcomeMessage()[i] ))
+        if err != nil {
+            fmt.Println("Error sending message to client.")
+            return
+        }
+
+    }
 	conn.Write([]byte("[ENTER YOUR NAME]: "))
 
 	name, err := bufio.NewReader(conn).ReadString('\n')
@@ -74,24 +84,32 @@ func handleConnection(conn net.Conn) {
 	clients[conn] = name
 	clientsMutex.Unlock()
 
-	broadcast(fmt.Sprintf("%s has joined our chat...\n", name), conn)
+	broadcast(fmt.Sprintf("\n%s has joined our chat...", name), conn)
 
 	sendPreviousMessages(conn)
 
 	scanner := bufio.NewScanner(conn)
+
     go func() {
+        conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
 
         for scanner.Scan() {
             msg := scanner.Text()
             if msg == "" {
                 conn.Write([]byte("Message cannot be empty.\n"))
+                //Print timestamp and name again
+                conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
+
                 continue
             }
-            timestampedMessage := fmt.Sprintf("[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), name, msg)
+            timestamp := time.Now().Format("2006-01-02 15:04:05")
+            timestampedMessage := fmt.Sprintf("\r[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), name, msg)
             clientsMutex.Lock()
             messages = append(messages, timestampedMessage)
             clientsMutex.Unlock()
             broadcast(timestampedMessage, conn)
+            conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", timestamp, name)))
+
         }
 
         if err := scanner.Err(); err!= nil {
@@ -101,25 +119,49 @@ func handleConnection(conn net.Conn) {
         clientsMutex.Lock()
         delete(clients, conn)
         clientsMutex.Unlock()
-        broadcast(fmt.Sprintf("%s has left our chat...\n", name), conn)
+        broadcast(fmt.Sprintf("\n%s has left our chat...", name), conn)
     } ()
     for {
         time.Sleep(1 *time.Second)
-        conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
+        // conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
     }
 
 }
 
-func welcomeMessage() string {
-    return `Welcome to TCP-Chat!`
+func welcomeMessage() []string {
+    //Create empty array of strings to store linux logo
+	fileText := make([]string, 0)//
+	file, err := os.Open("logo.txt")
+	if err != nil {
+		log.Fatalf("Failed to open file: %s", err)
+	}
+
+	defer file.Close()
+
+	//Reads from file
+	scanner := bufio.NewScanner(file)
+
+	//Return true if there is a line to read
+	for scanner.Scan() {
+		fileText = append(fileText, scanner.Text() + "\n") // appends line to fileText
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatalf("Erorr reading file: %s", err)
+	}
+
+	return fileText
 }
 
 func broadcast(message string, sender net.Conn) {
     clientsMutex.Lock()
     defer clientsMutex.Unlock()
     for conn := range clients {
-        if conn!=sender {
+        name := clients[conn]
+        if conn != sender {
             conn.Write([]byte(message + "\n"))
+            //when updating the client, we need to print the timestamp and name again
+            conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
         }
     }
 }
