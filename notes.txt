@@ -1,4 +1,5 @@
 solved the issue of overwriting/updating the user input as the timestamp gets updated by separating and replacing the function
 that updates the timeline where the chat gets updated and before scanning for user input
 
-we need to fix the structure of the files
+-we need to fix the structure of the files
+-make it work externally
