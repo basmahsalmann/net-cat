@@ -14,6 +14,8 @@ import (
 const (
 	maxClients = 10
 	defaultPort = "8989"
+    maxLength = 20
+    // ip = "10.1.201.169"
 )
 
 var (
@@ -24,13 +26,14 @@ var (
 
 func main() {
     port := getPort()
-    ln, err := net.Listen("tcp", ":"+port)
+    ip := GetLocalIP().String()
+    ln, err := net.Listen("tcp", ip+ ":"+port)
     if err != nil {
         log.Fatalf("Error setting up listener: %v\n", err)
     }
     defer ln.Close()
 
-    fmt.Printf("Listening on port :%s\n", port)
+    fmt.Printf("Listening on port %s:%s\n", ip, port)
 
     for {
         conn, err := ln.Accept()
@@ -65,15 +68,33 @@ func handleConnection(conn net.Conn) {
         }
 
     }
+
+name:
 	conn.Write([]byte("[ENTER YOUR NAME]: "))
 
 	name, err := bufio.NewReader(conn).ReadString('\n')
 	if err!= nil {
-		log.Printf("Error reading name: %v\n", err)
+		// log.Printf("Error reading name: %v\n", err)
 		return
 	}
 
 	name = strings.TrimSpace(name)
+
+    
+	if len(name) > maxLength{
+		conn.Write([]byte(fmt.Sprintf("Name cannot exceed %d characters.\n", maxLength)))
+        goto name
+		return
+	}
+
+    for _, char := range name {
+        if char < 'A' || char >  'Z' && char < 'a' || char > 'z'{
+            conn.Write([]byte("Name cannot contain special characters or numbers.\n"))
+			// handleConnection(conn) // Prompt user again
+            goto name
+			return
+        }
+    }
 
 	if name == "" {
 		conn.Write([]byte("Name cannot be empty.\n"))
@@ -95,6 +116,7 @@ func handleConnection(conn net.Conn) {
 
         for scanner.Scan() {
             msg := scanner.Text()
+            msg = strings.TrimSpace(msg)
             if msg == "" {
                 conn.Write([]byte("Message cannot be empty.\n"))
                 //Print timestamp and name again
@@ -180,3 +202,16 @@ func getPort() string {
     }
     return os.Args[1]
 }
+
+func GetLocalIP() net.IP {
+    conn, err := net.Dial("udp", "8.8.8.8:80")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
+
+    localAddress := conn.LocalAddr().(*net.UDPAddr)
+
+    return localAddress.IP
+}
+
