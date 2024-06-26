@@ -3,3 +3,5 @@ that updates the timeline where the chat gets updated and before scanning for us
 
 -we need to fix the structure of the files
 - fix/update sender time (optional ig)
+- the new usernam is not being updated for the other users or the prompt
+- if the username is updated it does not show the prompt

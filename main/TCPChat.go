@@ -98,8 +98,15 @@ name:
 
 	if name == "" {
 		conn.Write([]byte("Name cannot be empty.\n"))
-		return
+        goto name
+        return
 	}
+
+    if isUsernameTaken(name) {
+        conn.Write([]byte("Username is already taken, try another one.\n"))
+        goto name
+        return
+    }
 
 	clientsMutex.Lock()
 	clients[conn] = name
@@ -121,9 +128,51 @@ name:
                 conn.Write([]byte("Message cannot be empty.\n"))
                 //Print timestamp and name again
                 conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
-
+                
                 continue
             }
+
+                // check is message contains command to change name
+                if strings.HasPrefix(msg, "/name ") {
+                    // Handle /name command
+                    newUsername := strings.TrimSpace(strings.TrimPrefix(msg, "/name "))
+                    for {
+                        if err := validateName(newUsername); err != nil {
+                            conn.Write([]byte(fmt.Sprintf("%s\n", err)))
+                            conn.Write([]byte("[ENTER ANOTHER NAME]: "))
+                            input, err := bufio.NewReader(conn).ReadString('\n')
+                            if err != nil {
+                                log.Printf("Error reading name: %v\n", err)
+                                continue
+                            }
+                            newUsername = strings.TrimSpace(input)
+                            continue
+                        }
+        
+                        // Check if username is already taken
+                        if isUsernameTaken(newUsername) {
+                            conn.Write([]byte(fmt.Sprintf("Username %s is already taken. Please choose another.\n", newUsername)))
+                            conn.Write([]byte("[ENTER ANOTHER NAME]: "))
+                            input, err := bufio.NewReader(conn).ReadString('\n')
+                            if err != nil {
+                                log.Printf("Error reading name: %v\n", err)
+                                continue
+                            }
+                            newUsername = strings.TrimSpace(input)
+                            continue
+                        }
+        
+                        // Update username
+                        oldName := clients[conn]
+                        clients[conn] = newUsername
+        
+                        // Broadcast username change
+                        broadcast(fmt.Sprintf("\n%s is now known as %s...", oldName, newUsername), conn)
+                        break
+                    }
+                    continue // Continue handling messages
+                }
+
             timestamp := time.Now().Format("2006-01-02 15:04:05")
             timestampedMessage := fmt.Sprintf("\r[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), name, msg)
             clientsMutex.Lock()
@@ -142,7 +191,7 @@ name:
         delete(clients, conn)
         clientsMutex.Unlock()
         broadcast(fmt.Sprintf("\n%s has left our chat...", name), conn)
-    } ()
+    }()
     for {
         time.Sleep(1 *time.Second)
         // conn.Write([]byte(fmt.Sprintf("\r[%s][%s]: ", time.Now().Format("2006-01-02 15:04:05"), name)))
@@ -215,3 +264,37 @@ func GetLocalIP() net.IP {
     return localAddress.IP
 }
 
+func isUsernameTaken(username string) bool {
+    clientsMutex.Lock()
+    defer clientsMutex.Unlock()
+    for _, existingName := range clients {
+        if existingName == username {
+            return true
+        }
+    }
+    return false
+}
+
+func validateUsername(name string) error {
+    if len(name) > maxLength {
+        return fmt.Errorf("Name cannot exceed %d characters", maxLength)
+    }
+    for _, char := range name {
+        if (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') {
+            return fmt.Errorf("Name cannot contain special characters or numbers")
+        }
+    }
+    return nil
+}
+
+func validateName(name string) error {
+	if len(name) > maxLength {
+		return fmt.Errorf("Name cannot exceed %d characters", maxLength)
+	}
+	for _, char := range name {
+		if (char < 'A' || char > 'Z') && (char < 'a' || char > 'z') {
+			return fmt.Errorf("Name cannot contain special characters or numbers")
+		}
+	}
+	return nil
+}
