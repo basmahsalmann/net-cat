@@ -10,3 +10,4 @@ fixed files structure
 -if chat is updated as the user writes, his unsent message is removed
 - if the chat is updated as the user writes, his previous unsent message will be saved and will be concatenated with his new message (to others)
 - usage message
+-empty messages
