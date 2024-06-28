@@ -1,7 +1,12 @@
 solved the issue of overwriting/updating the user input as the timestamp gets updated by separating and replacing the function
 that updates the timeline where the chat gets updated and before scanning for user input
 
--we need to fix the structure of the files
+fixed the username issue
+works on localhost
+fixed files structure
+
 - fix/update sender time (optional ig)
-- the new usernam is not being updated for the other users or the prompt
-- if the username is updated it does not show the prompt
+-when a user change their name and then someone else joins, the previous messages shows their messgaes as two different ppl
+-if chat is updated as the user writes, his unsent message is removed
+- if the chat is updated as the user writes, his previous unsent message will be saved and will be concatenated with his new message (to others)
+- usage message
