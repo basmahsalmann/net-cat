@@ -5,9 +5,9 @@ fixed the username issue
 works on localhost
 fixed files structure
 
+issues:
 - fix/update sender time (optional ig)
 -when a user change their name and then someone else joins, the previous messages shows their messgaes as two different ppl
 -if chat is updated as the user writes, his unsent message is removed
 - if the chat is updated as the user writes, his previous unsent message will be saved and will be concatenated with his new message (to others)
-- usage message
 -empty messages
