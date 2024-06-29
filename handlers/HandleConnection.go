@@ -15,6 +15,7 @@ const (
 	MaxClients = 10
 	DefaultPort = "8989"
     MaxLength = 20
+    Usagemessage = "[USAGE]: ./TCPChat $port"
 )
 
 var (

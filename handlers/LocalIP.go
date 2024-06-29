@@ -2,20 +2,22 @@ package handlers
 
 import (
 	"net"
-	"os"
 	"log"
+    "os"
+    "fmt"
 )
 
 
 
 func GetLocalIP() string {
     var localAddress string
-    //if the user has specified a local address, use that (should be local & valid or an error will be displayed)
+
+    //Usage: ./TCPChat $port
     if len(os.Args) > 2 {
-        localAddress = os.Args[2]
-        return localAddress
+        fmt.Println(Usagemessage)
+        os.Exit(1)
     }
-    //otherwise, use the local address of the machine running the program
+    //use the local address of the machine running the program
     conn, err := net.Dial("udp", "8.8.8.8:80")
     if err != nil {
         log.Fatal(err)
