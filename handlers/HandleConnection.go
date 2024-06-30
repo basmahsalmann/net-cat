@@ -53,7 +53,6 @@ name:
 	if len(name) > MaxLength{
 		conn.Write([]byte(fmt.Sprintf("Name cannot exceed %d characters.\n", MaxLength)))
         goto name
-		return
 	}
 
     for _, char := range name {
@@ -61,20 +60,17 @@ name:
             conn.Write([]byte("Name cannot contain special characters or numbers.\n"))
 			// handleConnection(conn) // Prompt user again
             goto name
-			return
         }
     }
 
 	if name == "" {
 		conn.Write([]byte("Name cannot be empty.\n"))
         goto name
-        return
 	}
 
     if IsUsernameTaken(name) {
         conn.Write([]byte("Username is already taken, try another one.\n"))
         goto name
-        return
     }
 
 	ClientsMutex.Lock()
